@@ -9,10 +9,10 @@ public class MapGenerator : MonoBehaviour
     public Transform foodPrefab;
     public Transform bunnyPrefab;
     public Transform navMeshFloor;
-    public Transform navMeshMaskPrefab;
     public Vector2 mapSize;
-    public Vector2 maximumMapSize;
     public float tileSize;
+
+    public Material waterMaterial;
 
     [Range(0,1)]
     public float outlinePercent;
@@ -20,6 +20,8 @@ public class MapGenerator : MonoBehaviour
     public float obstaclePercent;
     [Range(0, 1)]
     public float foodPercent;
+    [Range(0, 1)]
+    public float waterPercent;
     public int bunnyAmount;
 
     List<Coord> allTileCoords;
@@ -28,6 +30,8 @@ public class MapGenerator : MonoBehaviour
     Coord mapCentre;
     Transform[,] tileMap;
     List<Coord> allOpenCoords;
+    bool[,] obstacleMap;
+    private int currentObstacleCount;
 
     private Transform mapHolder;
 
@@ -35,7 +39,9 @@ public class MapGenerator : MonoBehaviour
 
     public void GenerateMap()
     {
+        currentObstacleCount = 0;
         tileMap = new Transform[(int) mapSize.x, (int) mapSize.y];
+        obstacleMap = new bool[(int)mapSize.x, (int)mapSize.y];
 
         //Generate Coords
         allTileCoords = new List<Coord>();
@@ -69,6 +75,8 @@ public class MapGenerator : MonoBehaviour
                 Transform newTile = Instantiate(tilePrefab, tilePosition, Quaternion.Euler(Vector3.right * 90)) as Transform;
                 newTile.localScale = Vector3.one * (1 - outlinePercent) * tileSize;
                 newTile.parent = mapHolder;
+                newTile.GetComponent<Tile>().x = x;
+                newTile.GetComponent<Tile>().y = y;
                 tileMap[x, y] = newTile;
             }
         }
@@ -78,15 +86,14 @@ public class MapGenerator : MonoBehaviour
         GenerateObstaclesByPercentage(obstaclePrefab, obstaclePercent);
         GenerateObstaclesByPercentage(foodPrefab, foodPercent);
         GenerateObstaclesByInteger(bunnyPrefab, bunnyAmount);
+        GenerateWater(waterPercent);
 
-        navMeshFloor.localScale = new Vector3(maximumMapSize.x, maximumMapSize.y) * tileSize;
+        navMeshFloor.localScale = new Vector3(mapSize.x, mapSize.y) * tileSize;
 
         shuffledOpenTileCoords = new Queue<Coord>(Utility.ShuffleArray(allOpenCoords.ToArray(), seed));
-
-        GenerateNavMeshBoundaries();
     }
 
-    bool MapIsFullyAccessible(bool[,] obstacleMap, int currentObstacleCount)
+    bool MapIsFullyAccessible(bool[,] obstacleMap)
     {
         bool[,] mapFlags = new bool[obstacleMap.GetLength(0),obstacleMap.GetLength(1)];
         Queue<Coord> queue = new Queue<Coord>();
@@ -145,78 +152,123 @@ public class MapGenerator : MonoBehaviour
         return new Vector3(-mapSize.x / 2 + 0.5f + x, 0, -mapSize.y / 2 + 0.5f + y) * tileSize;
     }
 
+    public Transform GetTileFromPosition(Vector3 position)
+    {
+        int x = Mathf.RoundToInt(position.x / tileSize + (mapSize.x - 1) / 2f);
+        int y = Mathf.RoundToInt(position.z / tileSize + (mapSize.y - 1) / 2f);
+        x = Mathf.Clamp(x, 0, tileMap.GetLength(0));
+        y = Mathf.Clamp(y, 0, tileMap.GetLength(1));
+        return tileMap[x, y];
+    }
+
     private void GenerateObstaclesByInteger(Transform objectToSpawn, int amount)
     {
-        bool[,] obstacleMap = new bool[(int)mapSize.x, (int)mapSize.y];
-
-        int currentObstacleCount = 0;
         for (int i = 0; i < amount; i++)
         {
             Coord randomCoord = GetRandomCoord();
-            obstacleMap[randomCoord.x, randomCoord.y] = true;
-            currentObstacleCount++;
-
-            if (randomCoord != mapCentre && MapIsFullyAccessible(obstacleMap, currentObstacleCount))
+            if (obstacleMap[randomCoord.x, randomCoord.y] != true)
             {
-                Vector3 foodPosition = CoordToPosition(randomCoord.x, randomCoord.y);
-                Transform newFood = Instantiate(objectToSpawn, foodPosition, Quaternion.identity) as Transform;
-                newFood.parent = mapHolder;
-                newFood.localScale = Vector3.one * (1 - outlinePercent) * tileSize;
+                obstacleMap[randomCoord.x, randomCoord.y] = true;
+                currentObstacleCount++;
 
-                allOpenCoords.Remove(randomCoord);
-            } else
-            {
-                obstacleMap[randomCoord.x, randomCoord.y] = false;
-                currentObstacleCount--;
+                if (randomCoord != mapCentre && MapIsFullyAccessible(obstacleMap))
+                {
+                    Vector3 objectPosition = CoordToPosition(randomCoord.x, randomCoord.y);
+                    Transform newObject = Instantiate(objectToSpawn, objectPosition, Quaternion.identity) as Transform;
+                    newObject.parent = mapHolder;
+                    newObject.localScale = Vector3.one * (1 - outlinePercent) * tileSize;
+
+                    tileMap[randomCoord.x, randomCoord.y].GetComponent<Tile>().isBlocked = true;
+                    allOpenCoords.Remove(randomCoord);
+                } else
+                {
+                    obstacleMap[randomCoord.x, randomCoord.y] = false;
+                    currentObstacleCount--;
+                }
             }
         }
     }
 
     private void GenerateObstaclesByPercentage(Transform objectToSpawn, float percentage)
     {
-        bool[,] obstacleMap = new bool[(int)mapSize.x, (int)mapSize.y];
-
         int obstacleCount = (int)(mapSize.x * mapSize.y * percentage);
-        int currentObstacleCount = 0;
         for (int i = 0; i < obstacleCount; i++)
         {
             Coord randomCoord = GetRandomCoord();
-            obstacleMap[randomCoord.x, randomCoord.y] = true;
-            currentObstacleCount++;
-
-            if (randomCoord != mapCentre && MapIsFullyAccessible(obstacleMap, currentObstacleCount))
+            if (obstacleMap[randomCoord.x, randomCoord.y] != true)
             {
-                Vector3 foodPosition = CoordToPosition(randomCoord.x, randomCoord.y);
-                Transform newFood = Instantiate(objectToSpawn, foodPosition, Quaternion.identity) as Transform;
-                newFood.parent = mapHolder;
-                newFood.localScale = Vector3.one * (1 - outlinePercent) * tileSize;
+                obstacleMap[randomCoord.x, randomCoord.y] = true;
+                currentObstacleCount++;
 
-                allOpenCoords.Remove(randomCoord);
-            } else
+                if (randomCoord != mapCentre && MapIsFullyAccessible(obstacleMap))
+                {
+                    Vector3 objectPosition = CoordToPosition(randomCoord.x, randomCoord.y);
+                    Transform newObject = Instantiate(objectToSpawn, objectPosition, Quaternion.identity) as Transform;
+                    newObject.parent = mapHolder;
+                    newObject.localScale = Vector3.one * (1 - outlinePercent) * tileSize;
+
+                    tileMap[randomCoord.x, randomCoord.y].GetComponent<Tile>().isBlocked = true;
+                    allOpenCoords.Remove(randomCoord);
+                } else
+                {
+                    obstacleMap[randomCoord.x, randomCoord.y] = false;
+                    currentObstacleCount--;
+                }
+            }          
+        }
+    }
+
+    private void GenerateWater(float percentage)
+    { 
+        int obstacleCount = (int)(mapSize.x * mapSize.y * percentage);
+
+        for (int i = 0; i < obstacleCount; i++)
+        {
+            Coord randomCoord = GetRandomCoord();
+            if (obstacleMap[randomCoord.x, randomCoord.y] != true)
             {
-                obstacleMap[randomCoord.x, randomCoord.y] = false;
-                currentObstacleCount--;
+                obstacleMap[randomCoord.x, randomCoord.y] = true;
+                currentObstacleCount++;
+
+                if (randomCoord != mapCentre && MapIsFullyAccessible(obstacleMap))
+                {
+                    Transform waterTile = tileMap[randomCoord.x, randomCoord.y];
+                    waterTile.GetComponent<Renderer>().sharedMaterial = waterMaterial;
+                    GetSurroundingTiles(randomCoord.x, randomCoord.y);
+                    tileMap[randomCoord.x, randomCoord.y].GetComponent<Tile>().isWater = true;
+                    allOpenCoords.Remove(randomCoord);
+                } else
+                {
+                    obstacleMap[randomCoord.x, randomCoord.y] = false;
+                    currentObstacleCount--;
+                }
             }
         }
     }
 
-    private void GenerateNavMeshBoundaries()
+    private List<Transform> GetSurroundingTiles(int x, int y)
     {
-        Transform maskLeft = Instantiate(navMeshMaskPrefab, Vector3.left * (mapSize.x + maximumMapSize.x) / 4 * tileSize, Quaternion.identity) as Transform;
-        maskLeft.parent = mapHolder;
-        maskLeft.localScale = new Vector3((maximumMapSize.x - mapSize.x) / 2, 1, mapSize.y) * tileSize;
+        List<Transform> surroundingTiles = new List<Transform>();
+        //Top Left
+        if (x - 1 >= 0 && y + 1 <= mapSize.y - 1) surroundingTiles.Add(tileMap[x - 1, y + 1]);
+        //Top
+        if (y + 1 <= mapSize.y - 1) surroundingTiles.Add(tileMap[x, y + 1]);
+        //Top Right
+        if (x + 1 <= mapSize.x - 1 && y + 1 <= mapSize.y - 1) surroundingTiles.Add(tileMap[x + 1, y + 1]);
 
-        Transform maskRight = Instantiate(navMeshMaskPrefab, Vector3.right * (mapSize.x + maximumMapSize.x) / 4 * tileSize, Quaternion.identity) as Transform;
-        maskRight.parent = mapHolder;
-        maskRight.localScale = new Vector3((maximumMapSize.x - mapSize.x) / 2, 1, mapSize.y) * tileSize;
+        //Left
+        if (x - 1 >= 0) surroundingTiles.Add(tileMap[x - 1, y]);
+        //Right
+        if (x + 1 <= mapSize.x - 1) surroundingTiles.Add(tileMap[x + 1, y]);
 
-        Transform maskTop = Instantiate(navMeshMaskPrefab, Vector3.forward * (mapSize.y + maximumMapSize.y) / 4 * tileSize, Quaternion.identity) as Transform;
-        maskTop.parent = mapHolder;
-        maskTop.localScale = new Vector3(maximumMapSize.x, 1, (maximumMapSize.y - mapSize.y) / 2) * tileSize;
+        //Bottom Left
+        if (x - 1 >= 0 && y - 1 >= 0) surroundingTiles.Add(tileMap[x - 1, y - 1]);
+        //Bottom
+        if (y - 1 >= 0) surroundingTiles.Add(tileMap[x, y - 1]);
+        //Bottom Right
+        if (x + 1 <= mapSize.x - 1 && y - 1 >= 0) surroundingTiles.Add(tileMap[x + 1, y - 1]);
 
-        Transform maskBottom = Instantiate(navMeshMaskPrefab, Vector3.back * (mapSize.y + maximumMapSize.y) / 4 * tileSize, Quaternion.identity) as Transform;
-        maskBottom.parent = mapHolder;
-        maskBottom.localScale = new Vector3(maximumMapSize.x, 1, (maximumMapSize.y - mapSize.y) / 2) * tileSize;
+        return surroundingTiles;
     }
 
     public struct Coord

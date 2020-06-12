@@ -1,6 +1,8 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine;
+using UnityEngine.AI;
 
 public class MapGenerator : MonoBehaviour
 {
@@ -8,7 +10,6 @@ public class MapGenerator : MonoBehaviour
     public Transform obstaclePrefab;
     public Transform foodPrefab;
     public Transform bunnyPrefab;
-    public Transform navMeshFloor;
     public Vector2 mapSize;
     public float tileSize;
 
@@ -90,8 +91,6 @@ public class MapGenerator : MonoBehaviour
         GenerateObstaclesByPercentage(obstaclePrefab, obstaclePercent);
         GenerateObstaclesByPercentage(foodPrefab, foodPercent);
         GenerateObstaclesByInteger(bunnyPrefab, bunnyAmount);
-
-        navMeshFloor.localScale = new Vector3(mapSize.x, mapSize.y) * tileSize;
 
         shuffledOpenTileCoords = new Queue<Coord>(Utility.ShuffleArray(allOpenCoords.ToArray(), seed));
     }
@@ -237,9 +236,7 @@ public class MapGenerator : MonoBehaviour
                 if (MapIsFullyAccessible(obstacleMap))
                 {
                     Transform waterTile = tileMap[randomCoord.x, randomCoord.y];
-                    waterTile.GetComponent<Renderer>().sharedMaterial = waterMaterial;
-                    waterTile.GetComponent<Tile>().isWater = true;
-                    waterTile.GetComponent<Tile>().isBlocked = true;
+                    TransformToWatertile(waterTile);
                     allOpenCoords.Remove(randomCoord);
 
                     Transform currentTile = tileMap[randomCoord.x, randomCoord.y];
@@ -254,9 +251,7 @@ public class MapGenerator : MonoBehaviour
 
                             if (MapIsFullyAccessible(obstacleMap))
                             {
-                                surroundingTiles[y].GetComponent<Renderer>().sharedMaterial = waterMaterial;
-                                surroundingTiles[y].GetComponent<Tile>().isWater = true;
-                                surroundingTiles[y].GetComponent<Tile>().isBlocked = true;
+                                TransformToWatertile(surroundingTiles[y]);
                                 allOpenCoords.Remove(allOpenCoords.Find(coord => coord.x == surroundingTiles[y].GetComponent<Tile>().x && coord.y == surroundingTiles[y].GetComponent<Tile>().y));
 
                                 currentLakeSize++;
@@ -279,6 +274,14 @@ public class MapGenerator : MonoBehaviour
                 }
             }
         }
+    }
+
+    private void TransformToWatertile(Transform tile)
+    {
+        tile.GetComponent<Renderer>().sharedMaterial = waterMaterial;
+        tile.GetComponent<Tile>().isWater = true;
+        tile.GetComponent<Tile>().isBlocked = true;
+        Utility.SetStaticEditorFlag(tile.gameObject, StaticEditorFlags.NavigationStatic, false);
     }
 
     private List<Transform> GetSurroundingTiles(int x, int y)

@@ -1,5 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using UnityEditor;
+using UnityEngine;
 
 public static class Utility
 {
@@ -17,5 +19,20 @@ public static class Utility
         }
 
         return array;
+    }
+
+    public static void SetStaticEditorFlag(GameObject obj, StaticEditorFlags flag, bool shouldEnable)
+    {
+        var currentFlags = GameObjectUtility.GetStaticEditorFlags(obj);
+
+        if (shouldEnable)
+        {
+            currentFlags |= flag;
+        } else
+        {
+            currentFlags &= ~flag;
+        }
+
+        GameObjectUtility.SetStaticEditorFlags(obj, currentFlags);
     }
 }

@@ -12,7 +12,7 @@ public class MapEditor : Editor
 
         if (DrawDefaultInspector())
         {
-            map.GenerateMap();
+            //map.GenerateMap();
         }
 
         if (GUILayout.Button("Generate Map"))

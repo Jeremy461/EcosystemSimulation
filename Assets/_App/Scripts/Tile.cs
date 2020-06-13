@@ -6,7 +6,5 @@ public class Tile : MonoBehaviour
 {
     public int x;
     public int y;
-
-    public bool isBlocked = false;
-    public bool isWater = false;
+    public bool isWalkable = true;
 }

@@ -6,12 +6,16 @@ using UnityEngine.AI;
 
 public class MapGenerator : MonoBehaviour
 {
+    public static MapGenerator instance = null;
+
     public Transform tilePrefab;
     public Transform obstaclePrefab;
     public Transform foodPrefab;
     public Transform bunnyPrefab;
     public Vector2 mapSize;
     public float tileSize;
+    public int seed = 10;
+    public Transform[,] tileMap;
 
     public Material waterMaterial;
 
@@ -26,18 +30,27 @@ public class MapGenerator : MonoBehaviour
     public int lakeAmount;
     public int bunnyAmount;
 
-    List<Coord> allTileCoords;
-    Queue<Coord> shuffledTileCoords;
-    Queue<Coord> shuffledOpenTileCoords;
-    Coord mapCentre;
-    Transform[,] tileMap;
-    List<Coord> allOpenCoords;
-    bool[,] obstacleMap;
+    private List<Coord> allTileCoords;
+    private Queue<Coord> shuffledTileCoords;
+    private Queue<Coord> shuffledOpenTileCoords;
+    private Coord mapCentre;
+    private List<Coord> allOpenCoords;
+    private bool[,] obstacleMap;
     private int currentObstacleCount;
-
     private Transform mapHolder;
 
-    public int seed = 10;
+    private void Awake()
+    {
+        if (instance != null && instance != this)
+        {
+            Destroy(this.gameObject);
+        }
+
+        instance = this;
+        DontDestroyOnLoad(this.gameObject);
+
+        GenerateMap();
+    }
 
     public void GenerateMap()
     {
@@ -75,7 +88,7 @@ public class MapGenerator : MonoBehaviour
             for (int y = 0; y < mapSize.y; y++)
             {
                 Vector3 tilePosition = CoordToPosition(x, y);
-                Transform newTile = Instantiate(tilePrefab, tilePosition, Quaternion.Euler(Vector3.right * 90)) as Transform;
+                Transform newTile = Instantiate(tilePrefab, tilePosition, Quaternion.identity) as Transform;
                 newTile.localScale = Vector3.one * (1 - outlinePercent) * tileSize;
                 newTile.parent = mapHolder;
                 newTile.GetComponent<Tile>().x = x;
@@ -154,15 +167,6 @@ public class MapGenerator : MonoBehaviour
         return new Vector3(-mapSize.x / 2 + 0.5f + x, 0, -mapSize.y / 2 + 0.5f + y) * tileSize;
     }
 
-    public Transform GetTileFromPosition(Vector3 position)
-    {
-        int x = Mathf.RoundToInt(position.x / tileSize + (mapSize.x - 1) / 2f);
-        int y = Mathf.RoundToInt(position.z / tileSize + (mapSize.y - 1) / 2f);
-        x = Mathf.Clamp(x, 0, tileMap.GetLength(0));
-        y = Mathf.Clamp(y, 0, tileMap.GetLength(1));
-        return tileMap[x, y];
-    }
-
     private void GenerateObstaclesByInteger(Transform objectToSpawn, int amount)
     {
         for (int i = 0; i < amount; i++)
@@ -180,7 +184,7 @@ public class MapGenerator : MonoBehaviour
                     newObject.parent = mapHolder;
                     newObject.localScale = Vector3.one * (1 - outlinePercent) * tileSize;
 
-                    tileMap[randomCoord.x, randomCoord.y].GetComponent<Tile>().isBlocked = true;
+                    tileMap[randomCoord.x, randomCoord.y].GetComponent<Tile>().isWalkable = false;
                     allOpenCoords.Remove(randomCoord);
                 } else
                 {
@@ -209,7 +213,7 @@ public class MapGenerator : MonoBehaviour
                     newObject.parent = mapHolder;
                     newObject.localScale = Vector3.one * (1 - outlinePercent) * tileSize;
 
-                    tileMap[randomCoord.x, randomCoord.y].GetComponent<Tile>().isBlocked = true;
+                    tileMap[randomCoord.x, randomCoord.y].GetComponent<Tile>().isWalkable = false;
                     allOpenCoords.Remove(randomCoord);
                 } else
                 {
@@ -240,7 +244,7 @@ public class MapGenerator : MonoBehaviour
                     allOpenCoords.Remove(randomCoord);
 
                     Transform currentTile = tileMap[randomCoord.x, randomCoord.y];
-                    List<Transform> surroundingTiles = GetSurroundingTiles(currentTile.GetComponent<Tile>().x, currentTile.GetComponent<Tile>().y);
+                    List<Transform> surroundingTiles = GetSurroundingTiles(currentTile.GetComponent<Tile>().x, currentTile.GetComponent<Tile>().y, false);
 
                     while (currentLakeSize < maxLakeSize)
                     {
@@ -260,11 +264,10 @@ public class MapGenerator : MonoBehaviour
                                 obstacleMap[surroundingTiles[y].GetComponent<Tile>().x, surroundingTiles[y].GetComponent<Tile>().y] = false;
                                 currentObstacleCount--;
                             }
-
                         }
 
                         int random = Random.Range(0, surroundingTiles.Count); 
-                        surroundingTiles = GetSurroundingTiles(surroundingTiles[random].GetComponent<Tile>().x, surroundingTiles[random].GetComponent<Tile>().y);
+                        surroundingTiles = GetSurroundingTiles(surroundingTiles[random].GetComponent<Tile>().x, surroundingTiles[random].GetComponent<Tile>().y, false);
                     }
                 }
                 else
@@ -279,32 +282,37 @@ public class MapGenerator : MonoBehaviour
     private void TransformToWatertile(Transform tile)
     {
         tile.GetComponent<Renderer>().sharedMaterial = waterMaterial;
-        tile.GetComponent<Tile>().isWater = true;
-        tile.GetComponent<Tile>().isBlocked = true;
+        tile.GetComponent<Tile>().isWalkable = false;
         Utility.SetStaticEditorFlag(tile.gameObject, StaticEditorFlags.NavigationStatic, false);
+        tile.transform.position = new Vector3(tile.transform.position.x, tile.transform.position.y - 0.3f, tile.transform.position.z);
     }
 
-    private List<Transform> GetSurroundingTiles(int x, int y)
+    public List<Transform> GetSurroundingTiles(int x, int y, bool getDiagionals)
     {
         List<Transform> surroundingTiles = new List<Transform>();
-        //Top Left
-        //if (x - 1 >= 0 && y + 1 <= mapSize.y - 1) surroundingTiles.Add(tileMap[x - 1, y + 1]);
+
+        if (getDiagionals)
+        {
+            //Top Left
+            if (x - 1 >= 0 && y + 1 <= mapSize.y - 1 && tileMap[x - 1, y + 1].GetComponent<Tile>().isWalkable) surroundingTiles.Add(tileMap[x - 1, y + 1]);
+            //Top Right
+            if (x + 1 <= mapSize.x - 1 && y + 1 <= mapSize.y - 1 && tileMap[x + 1, y + 1].GetComponent<Tile>().isWalkable) surroundingTiles.Add(tileMap[x + 1, y + 1]);
+            //Bottom Left
+            if (x - 1 >= 0 && y - 1 >= 0 && tileMap[x - 1, y - 1].GetComponent<Tile>().isWalkable) surroundingTiles.Add(tileMap[x - 1, y - 1]);
+            //Bottom Right
+            if (x + 1 <= mapSize.x - 1 && y - 1 >= 0 && tileMap[x + 1, y - 1].GetComponent<Tile>().isWalkable) surroundingTiles.Add(tileMap[x + 1, y - 1]);
+        }
+
         //Top
-        if (y + 1 <= mapSize.y - 1 && !tileMap[x, y + 1].GetComponent<Tile>().isWater) surroundingTiles.Add(tileMap[x, y + 1]);
-        //Top Right
-        //if (x + 1 <= mapSize.x - 1 && y + 1 <= mapSize.y - 1) surroundingTiles.Add(tileMap[x + 1, y + 1]);
+        if (y + 1 <= mapSize.y - 1 && tileMap[x, y + 1].GetComponent<Tile>().isWalkable) surroundingTiles.Add(tileMap[x, y + 1]);
 
         //Left
-        if (x - 1 >= 0 && !tileMap[x - 1, y].GetComponent<Tile>().isWater) surroundingTiles.Add(tileMap[x - 1, y]);
+        if (x - 1 >= 0 && tileMap[x - 1, y].GetComponent<Tile>().isWalkable) surroundingTiles.Add(tileMap[x - 1, y]);
         //Right
-        if (x + 1 <= mapSize.x - 1 && !tileMap[x + 1, y].GetComponent<Tile>().isWater) surroundingTiles.Add(tileMap[x + 1, y]);
+        if (x + 1 <= mapSize.x - 1 && tileMap[x + 1, y].GetComponent<Tile>().isWalkable) surroundingTiles.Add(tileMap[x + 1, y]);
 
-        //Bottom Left
-        //if (x - 1 >= 0 && y - 1 >= 0) surroundingTiles.Add(tileMap[x - 1, y - 1]);
         //Bottom
-        if (y - 1 >= 0 && !tileMap[x, y - 1].GetComponent<Tile>().isWater) surroundingTiles.Add(tileMap[x, y - 1]);
-        //Bottom Right
-        //if (x + 1 <= mapSize.x - 1 && y - 1 >= 0) surroundingTiles.Add(tileMap[x + 1, y - 1]);
+        if (y - 1 >= 0 && tileMap[x, y - 1].GetComponent<Tile>().isWalkable) surroundingTiles.Add(tileMap[x, y - 1]);
 
         return surroundingTiles;
     }

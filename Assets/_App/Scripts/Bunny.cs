@@ -31,7 +31,7 @@ public class Bunny : MonoBehaviour
 
     public Transform GetTileFromPosition(Vector3 position)
     {
-        return mapGenerator.tileMap[(int) position.x, (int) position.z];
+        return mapGenerator.tileMap[Mathf.FloorToInt(position.x), Mathf.FloorToInt(position.z)];
     }
 
     private void Update()
@@ -40,8 +40,8 @@ public class Bunny : MonoBehaviour
             int currNode = 0;
 
             while(currNode < currentPath.Count - 1) {
-                Vector3 start = mapGenerator.CoordToPosition(currentPath[currNode].x, currentPath[currNode].y) - new Vector3(0, 1, 0);
-                Vector3 end = mapGenerator.CoordToPosition(currentPath[currNode + 1].x, currentPath[currNode + 1].y) - new Vector3(0, 1, 0);
+                Vector3 start = mapGenerator.CoordToPosition(currentPath[currNode].x, currentPath[currNode].y);
+                Vector3 end = mapGenerator.CoordToPosition(currentPath[currNode + 1].x, currentPath[currNode + 1].y);
 
                 currNode++;
 
@@ -49,38 +49,43 @@ public class Bunny : MonoBehaviour
             }
         }
 
-        Vector3 direction = (targetTile.transform.position - transform.position).normalized;
-        if (direction != Vector3.zero)
-        {
-            Quaternion lookRotation = Quaternion.LookRotation(direction);
-            transform.rotation = Quaternion.Slerp(transform.rotation, lookRotation, Time.deltaTime * rotationSpeed);
-        }
+        //Vector3 direction = (targetTile.transform.position - transform.position).normalized;
+        //if (direction != Vector3.zero)
+        //{
+        //    Quaternion lookRotation = Quaternion.LookRotation(direction);
+        //    transform.rotation = Quaternion.Slerp(transform.rotation, lookRotation, Time.deltaTime * rotationSpeed);
+        //}
 
-        if (Vector3.Distance(transform.position, targetTile.transform.position) > 0f)
-        {
+        //if (Vector3.Distance(transform.position, targetTile.transform.position) > 0f)
+        //{
 
-            transform.position = Vector3.MoveTowards(transform.position, targetTile.transform.position, walkingSpeed * Time.deltaTime);
-            if (!animation.isPlaying)
-            {
-                animation.Play();
-            }
-        }
+        //    transform.position = Vector3.MoveTowards(transform.position, targetTile.transform.position, walkingSpeed * Time.deltaTime);
+        //    if (!animation.isPlaying)
+        //    {
+        //        animation.Play();
+        //    }
+        //}
     }
 
     private IEnumerator Move()
     {
         yield return new WaitForSeconds(hopFrequency);
 
-        while (true)
-        {
-            GeneratePathTo(0, 0, mapGenerator.graph);
+        while(true) {
+            while (currentPath == null) {
+                currentTile = GetTileFromPosition(transform.position);
 
-            currentTile = GetTileFromPosition(transform.position);
+                List<Transform> surroundingTiles = mapGenerator.GetSurroundingTiles(currentTile.GetComponent<Tile>().x, currentTile.GetComponent<Tile>().y, true);
+                transform.position = surroundingTiles[Random.Range(0, surroundingTiles.Count)].position;
 
-            List<Transform> surroundingTiles = mapGenerator.GetSurroundingTiles(currentTile.GetComponent<Tile>().x, currentTile.GetComponent<Tile>().y, true);
-            targetTile = surroundingTiles[Random.Range(0, surroundingTiles.Count)];
+                yield return new WaitForSeconds(hopFrequency);
+            }
 
-            yield return new WaitForSeconds(hopFrequency);
+            while (currentPath != null) {
+                MoveToNextTile();
+
+                yield return new WaitForSeconds(hopFrequency);
+            }
         }
     }
 
@@ -154,5 +159,19 @@ public class Bunny : MonoBehaviour
 
         //currentPath describes a route from target to our source, so invert
         currentPath.Reverse();
+    }
+
+    private void SetTarget(int x, int y) {
+        GeneratePathTo(x, y, mapGenerator.graph);
+    }
+
+    private void MoveToNextTile() {
+        currentPath.RemoveAt(0);
+
+        transform.position = mapGenerator.CoordToPosition(currentPath[0].x, currentPath[0].y);
+
+        if (currentPath.Count == 1) {
+            currentPath = null;
+        }
     }
 }

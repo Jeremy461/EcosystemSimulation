@@ -5,17 +5,16 @@ public class MapGenerator : MonoBehaviour
 {
     public static MapGenerator instance = null;
 
+    [Header("Prefabs")]
     public Transform tilePrefab;
     public Transform obstaclePrefab;
     public Transform foodPrefab;
     public Transform bunnyPrefab;
-    public Vector2 mapSize;
-    public float tileSize;
-    public int seed = 10;
-    public Transform[,] tileMap;
-
     public Material waterMaterial;
 
+    [Header("Map Attributes")]
+    public Vector2 mapSize;
+    public float tileSize;
     [Range(0, 1)]
     public float obstaclePercent;
     [Range(0, 1)]
@@ -24,7 +23,10 @@ public class MapGenerator : MonoBehaviour
     public float waterPercent;
     public int lakeAmount;
     public int bunnyAmount;
+    public int seed = 10;
+
     public Node[,] graph;
+    public Transform[,] tileMap;
 
     private List<Coord> allTileCoords;
     private Queue<Coord> shuffledTileCoords;

@@ -10,7 +10,9 @@ GameObject:
   m_Component:
   - component: {fileID: 787704531832530761}
   - component: {fileID: 787704531832530760}
-  m_Layer: 0
+  - component: {fileID: 384586678751099125}
+  - component: {fileID: 6102808574316227226}
+  m_Layer: 8
   m_Name: Bunny
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -44,9 +46,39 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2433571e6da406a43ba3fe9bfd1a88c2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  hopFrequency: 2
-  walkingSpeed: 3
-  rotationSpeed: 10
+  hopFrequency: 1
+  awarenessRadius: 4
+  hunger: 50
+  thirst: 0
+--- !u!135 &384586678751099125
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 787704531832530763}
+  m_Material: {fileID: 0}
+  m_IsTrigger: 1
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 4
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!54 &6102808574316227226
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 787704531832530763}
+  serializedVersion: 2
+  m_Mass: 1
+  m_Drag: 0
+  m_AngularDrag: 0.05
+  m_UseGravity: 0
+  m_IsKinematic: 1
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 0
 --- !u!1 &1329641488041446170
 GameObject:
   m_ObjectHideFlags: 0
@@ -60,7 +92,7 @@ GameObject:
   - component: {fileID: 8131924482444691677}
   - component: {fileID: 7510620435518840504}
   - component: {fileID: 4330202537135891467}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Bunny
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -144,7 +176,8 @@ Animation:
   m_Enabled: 1
   serializedVersion: 3
   m_Animation: {fileID: 7400000, guid: b327556a73d3eb14680b548b388919ed, type: 2}
-  m_Animations: []
+  m_Animations:
+  - {fileID: 7400000, guid: b327556a73d3eb14680b548b388919ed, type: 2}
   m_WrapMode: 0
   m_PlayAutomatically: 1
   m_AnimatePhysics: 0
@@ -160,6 +193,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Name
       value: Bunny
+      objectReference: {fileID: 0}
+    - target: {fileID: 5875389298041920479, guid: ee835e4b603bc424992d836c195fe850,
+        type: 3}
+      propertyPath: m_Layer
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 7481264818704181708, guid: ee835e4b603bc424992d836c195fe850,
         type: 3}

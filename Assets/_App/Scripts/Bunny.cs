@@ -9,27 +9,34 @@ public class Bunny : MonoBehaviour
     public float awarenessRadius = 4;
 
     //Stats
-    public float hunger = 60;
+    public float hunger = 0;
     public float thirst = 0;
-    private float walkingSpeed = 3;
+    public float walkingSpeed = 3;
     private float rotationSpeed = 3;
 
     //States
-    private bool lookingForFood = false;
-    private bool foundFood = false;
-    private bool isEating = false;
-    private Transform targetPlant;
+    public BunnyBehaviour behaviour;
 
-    private bool lookingForWater = true;
-    private bool foundWater = false;
+    public bool lookingForFood = false;
+    public bool foundFood = false;
+    public bool isEating = false;
+    public Transform targetPlant;
+
+    public bool lookingForWater = true;
+    public bool foundWater = false;
+    public bool isDrinking = false;
 
     //Other
-    private List<Node> currentPath = null;
+    public List<Node> currentPath = null;
     private bool isWalking = true;
     private Transform currentTile;
-    private Animation animation;
+    public Animation animation;
     private Coroutine movementCoroutine;
-    private MapGenerator mapGenerator;
+    public MapGenerator mapGenerator;
+
+    //UI
+    public RectTransform hungerBar;
+    public RectTransform thirstBar;
 
     void Start()
     {
@@ -37,65 +44,42 @@ public class Bunny : MonoBehaviour
         animation = GetComponentInChildren<Animation>();
         hopFrequency = hopFrequency * Random.Range(0.7f, 1.3f);
 
-        StartCoroutine(Move());
+        behaviour = new Walking();
     }
 
     private void Update() {
-        if (!isEating) {
-            hunger += Time.deltaTime;
-        }
-        thirst += Time.deltaTime;
+        behaviour.Move(this);      
 
         if (hunger > 60 && !foundFood) {
             lookingForFood = true;
         }
 
-        if (thirst > 60) {
+        if (thirst > 60 && !foundWater) {
             lookingForWater = true;
         }
+
+        if (thirst >= 100 || hunger >= 100)
+        {
+            Destroy(gameObject);
+        }
+
+        hungerBar.localScale = new Vector3(hunger / 100, 1, 1);
+        thirstBar.localScale = new Vector3(thirst / 100, 1, 1);
     }
 
     private void OnTriggerStay(Collider other) {
-        if (other.gameObject.layer == 9 && lookingForFood) {
+        if (other.gameObject.layer == 9 && lookingForFood && other.gameObject.GetComponent<Plant>().eatenBy == null) {
             GeneratePathTo(Mathf.FloorToInt(other.transform.position.x), Mathf.FloorToInt(other.transform.position.z), mapGenerator.graph);
             targetPlant = other.gameObject.transform;
             lookingForFood = false;
             foundFood = true;
         }
-    }
 
-    private IEnumerator Move()
-    {
-        yield return new WaitForSeconds(hopFrequency);
-
-        while(true) {
-            while (currentPath == null && foundFood) {
-                isEating = true;
-                while (hunger > 0) {
-                    hunger -= Time.deltaTime * 20;
-                    targetPlant.localScale = Vector3.Scale(targetPlant.localScale, new Vector3(0.997f, 0.997f, 0.997f));
-                    yield return null;
-                }
-
-                Destroy(targetPlant.gameObject);
-                isEating = false;
-                foundFood = false;
-            }
-
-            while (currentPath == null) {
-                currentTile = GetTileFromPosition(transform.position);
-
-                List<Transform> surroundingTiles = mapGenerator.GetSurroundingTiles(currentTile.GetComponent<Tile>().x, currentTile.GetComponent<Tile>().y, true);
-                movementCoroutine = StartCoroutine(HopToTile(surroundingTiles[Random.Range(0, surroundingTiles.Count)].position));
-
-                yield return new WaitForSeconds(hopFrequency);
-            }
-
-            while (currentPath != null) {
-                MoveToNextTile();
-
-                yield return new WaitForSeconds(hopFrequency);
-            }
+        if (other.gameObject.layer == 10 && lookingForWater)
+        {
+            GeneratePathTo(Mathf.FloorToInt(other.transform.position.x), Mathf.FloorToInt(other.transform.position.z), mapGenerator.graph);
+            lookingForWater = false;
+            foundWater = true;
         }
     }
 
@@ -110,31 +94,6 @@ public class Bunny : MonoBehaviour
 
     private void SetTarget(int x, int y) {
         GeneratePathTo(x, y, mapGenerator.graph);
-    }
-
-    private void MoveToNextTile() {
-        currentPath.RemoveAt(0);
-
-        movementCoroutine = StartCoroutine(HopToTile(mapGenerator.CoordToPosition(currentPath[0].x, currentPath[0].y)));
-
-        if (currentPath.Count == 1) {
-            currentPath = null;
-        }
-    }
-
-    private IEnumerator HopToTile(Vector3 targetTile) {
-        Vector3 direction = (targetTile - transform.position).normalized;
-        transform.LookAt(targetTile);
-
-        while (Vector3.Distance(transform.position, targetTile) > 0f) {
-            transform.position = Vector3.MoveTowards(transform.position, targetTile, walkingSpeed * Time.deltaTime);
-            if (!animation.isPlaying) {
-                animation.Play();
-            }
-            yield return null;
-        }
-
-        yield return null;
     }
 
     public void GeneratePathTo(int x, int y, Node[,] graph) {

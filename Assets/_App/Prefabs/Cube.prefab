@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 7172010691106996172}
   - component: {fileID: 3509589244676375349}
   - component: {fileID: 7039699904613412510}
+  - component: {fileID: 7135311776224379119}
   m_Layer: 0
   m_Name: Cube
   m_TagString: Untagged
@@ -95,3 +96,16 @@ MonoBehaviour:
   x: 0
   y: 0
   isWalkable: 1
+--- !u!65 &7135311776224379119
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2920662279691548649}
+  m_Material: {fileID: 0}
+  m_IsTrigger: 0
+  m_Enabled: 0
+  serializedVersion: 2
+  m_Size: {x: 1, y: 0.37, z: 1}
+  m_Center: {x: 0, y: 0.12, z: 0}

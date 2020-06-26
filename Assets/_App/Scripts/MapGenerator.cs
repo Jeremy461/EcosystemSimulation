@@ -257,6 +257,19 @@ public class MapGenerator : MonoBehaviour
                                 allOpenCoords.Remove(allOpenCoords.Find(coord => coord.x == surroundingTiles[y].GetComponent<Tile>().x && coord.y == surroundingTiles[y].GetComponent<Tile>().y));
 
                                 currentLakeSize++;
+
+                                surroundingTiles[y].GetComponent<Tile>().isWater = true;
+                                surroundingTiles[y].GetComponent<BoxCollider>().enabled = false;
+
+                                List<Transform> waterEdges = GetSurroundingTiles(surroundingTiles[y].GetComponent<Tile>().x, surroundingTiles[y].GetComponent<Tile>().y, false);
+                                for (int z = 0; z < waterEdges.Count; z++)
+                                {
+                                    if (waterEdges[z].GetComponent<Tile>().isWalkable && !waterEdges[z].GetComponent<Tile>().isWater)
+                                    {
+                                        waterEdges[z].GetComponent<BoxCollider>().enabled = true;
+                                        waterEdges[z].gameObject.layer = 10;
+                                    }
+                                }
                             } else
                             {
                                 obstacleMap[surroundingTiles[y].GetComponent<Tile>().x, surroundingTiles[y].GetComponent<Tile>().y] = false;

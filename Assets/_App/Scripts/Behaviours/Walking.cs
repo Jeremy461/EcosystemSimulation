@@ -12,9 +12,6 @@ public class Walking : BunnyBehaviour
 
     public override void Move(Bunny bunny)
     {
-        bunny.hunger += Time.deltaTime * Random.Range(1.5f, 2.5f);
-        bunny.thirst += Time.deltaTime * Random.Range(1.5f, 2.5f);
-
         timer += Time.deltaTime;
         // Hop every "hopFrequency"-seconds
         if (timer % 60 >= bunny.hopFrequency) {
@@ -62,6 +59,11 @@ public class Walking : BunnyBehaviour
             if (bunny.currentPath == null && bunny.foundWater)
             {
                 bunny.behaviour = new Drinking();
+            }
+
+            if (bunny.currentPath == null && bunny.foundMate) {
+                bunny.mate.behaviour = new Mating();
+                bunny.behaviour = new Mating();
             }
         }
     }

@@ -11,6 +11,7 @@ public class MapGenerator : MonoBehaviour
     public Transform foodPrefab;
     public Transform bunnyPrefab;
     public Material waterMaterial;
+    public Material femaleFurMaterial;
 
     [Header("Map Attributes")]
     public Vector2 mapSize;
@@ -99,7 +100,7 @@ public class MapGenerator : MonoBehaviour
 
         GenerateObstaclesByPercentage(obstaclePrefab, obstaclePercent);
         GenerateObstaclesByPercentage(foodPrefab, foodPercent);
-        GenerateObstaclesByInteger(bunnyPrefab, bunnyAmount);
+        GenerateBunnies(bunnyPrefab, bunnyAmount);
         GeneratePathfindingGraph();
 
         shuffledOpenTileCoords = new Queue<Coord>(Utility.ShuffleArray(allOpenCoords.ToArray(), seed));
@@ -165,7 +166,7 @@ public class MapGenerator : MonoBehaviour
         return new Vector3(0.5f + x, 0, 0.5f + y) * tileSize;
     }
 
-    private void GenerateObstaclesByInteger(Transform objectToSpawn, int amount)
+    private void GenerateBunnies(Transform bunny, int amount)
     {
         for (int i = 0; i < amount; i++)
         {
@@ -175,12 +176,19 @@ public class MapGenerator : MonoBehaviour
                 obstacleMap[randomCoord.x, randomCoord.y] = true;
                 currentObstacleCount++;
 
-                if (MapIsFullyAccessible(obstacleMap))
-                {
+                if (MapIsFullyAccessible(obstacleMap)) {
                     Vector3 objectPosition = CoordToPosition(randomCoord.x, randomCoord.y);
-                    Transform newObject = Instantiate(objectToSpawn, objectPosition, Quaternion.identity) as Transform;
-                    newObject.parent = mapHolder;
-                    newObject.localScale = Vector3.one * tileSize;
+                    Transform newBunny = Instantiate(bunny, objectPosition, Quaternion.identity) as Transform;
+                    if (i < amount / 2) {
+                        newBunny.GetComponent<Bunny>().gender = "Male";
+                    } else {
+                        newBunny.GetComponent<Bunny>().gender = "Female";
+                        Material[] sharedMaterialsCopy = newBunny.GetComponentInChildren<Renderer>().sharedMaterials;
+                        sharedMaterialsCopy[0] = femaleFurMaterial;
+                        newBunny.GetComponentInChildren<Renderer>().sharedMaterials = sharedMaterialsCopy;
+                    }
+                    newBunny.parent = mapHolder;
+                    newBunny.localScale = Vector3.one * tileSize;
 
                     tileMap[randomCoord.x, randomCoord.y].GetComponent<Tile>().isWalkable = false;
                     allOpenCoords.Remove(randomCoord);

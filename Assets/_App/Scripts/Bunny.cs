@@ -5,17 +5,23 @@ using UnityEngine;
 public class Bunny : MonoBehaviour
 {
     //Genes
+    public string gender;
     public float hopFrequency = 1;
     public float awarenessRadius = 4;
 
     //Stats
     public float hunger = 0;
     public float thirst = 0;
+    public float reproductiveUrge = 0;
     public float walkingSpeed = 3;
     private float rotationSpeed = 3;
 
     //States
     public BunnyBehaviour behaviour;
+
+    public bool lookingForMate = false;
+    public bool foundMate = false;
+    public Bunny mate = null;
 
     public bool lookingForFood = false;
     public bool foundFood = false;
@@ -37,6 +43,7 @@ public class Bunny : MonoBehaviour
     //UI
     public RectTransform hungerBar;
     public RectTransform thirstBar;
+    public RectTransform urgeBar;
 
     void Start()
     {
@@ -50,12 +57,16 @@ public class Bunny : MonoBehaviour
     private void Update() {
         behaviour.Move(this);      
 
-        if (hunger > 60 && !foundFood) {
+        if (hunger > 60 && !foundFood && !foundMate) {
             lookingForFood = true;
         }
 
-        if (thirst > 60 && !foundWater) {
+        if (thirst > 60 && !foundWater && !foundMate) {
             lookingForWater = true;
+        }
+
+        if (reproductiveUrge > 60 && !foundWater && !foundFood) {
+            lookingForMate = true;
         }
 
         if (thirst >= 100 || hunger >= 100)
@@ -63,11 +74,50 @@ public class Bunny : MonoBehaviour
             Destroy(gameObject);
         }
 
+        switch(behaviour.GetType().ToString()) {
+            case "Walking":
+                hunger += Time.deltaTime * 2;
+                thirst += Time.deltaTime * 2;
+                reproductiveUrge += Time.deltaTime * 2;
+                break;
+            case "Eating":
+                thirst += Time.deltaTime * 2;
+                reproductiveUrge += Time.deltaTime * 2;
+                break;
+            case "Drinking":
+                hunger += Time.deltaTime * 2;
+                reproductiveUrge += Time.deltaTime * 2;
+                break;
+            case "Mating":
+                thirst += Time.deltaTime * 2;
+                hunger += Time.deltaTime * 2;
+                break;
+        }
+
         hungerBar.localScale = new Vector3(hunger / 100, 1, 1);
         thirstBar.localScale = new Vector3(thirst / 100, 1, 1);
+        urgeBar.localScale = new Vector3(reproductiveUrge / 100, 1, 1);
     }
 
     private void OnTriggerStay(Collider other) {
+        if (other.gameObject.layer == 8 &&
+            lookingForMate &&
+            other.gameObject.GetComponent<Bunny>().gender != gender &&
+            other.gameObject.GetComponent<Bunny>().lookingForMate &&
+            other.gameObject.GetComponent<Bunny>().mate == null) {
+            mate = other.gameObject.GetComponent<Bunny>();
+            mate.mate = this;
+            mate.lookingForMate = false;
+            if (gender == "Male") {
+                GeneratePathTo(Mathf.FloorToInt(other.transform.position.x), Mathf.FloorToInt(other.transform.position.z), mapGenerator.graph);
+                mate.behaviour = new Waiting();
+            }
+            mate.foundMate = true;
+
+            lookingForMate = false;
+            foundMate = true;
+        }
+
         if (other.gameObject.layer == 9 && lookingForFood && other.gameObject.GetComponent<Plant>().eatenBy == null) {
             GeneratePathTo(Mathf.FloorToInt(other.transform.position.x), Mathf.FloorToInt(other.transform.position.z), mapGenerator.graph);
             targetPlant = other.gameObject.transform;
@@ -90,10 +140,6 @@ public class Bunny : MonoBehaviour
 
     public Transform GetTileFromPosition(Vector3 position) {
         return mapGenerator.tileMap[Mathf.FloorToInt(position.x), Mathf.FloorToInt(position.z)];
-    }
-
-    private void SetTarget(int x, int y) {
-        GeneratePathTo(x, y, mapGenerator.graph);
     }
 
     public void GeneratePathTo(int x, int y, Node[,] graph) {

@@ -52,7 +52,7 @@ MonoBehaviour:
   awarenessRadius: 4
   hunger: 0
   thirst: 0
-  reproductiveUrge: 0
+  reproductiveUrge: 50
   walkingSpeed: 3
   lookingForMate: 0
   foundMate: 0

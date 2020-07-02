@@ -18,6 +18,7 @@ public class Walking : BunnyBehaviour
             // If bunny has no specific path, generate a random target tile
             if (bunny.currentPath == null)
             {
+                bunny.mate = null;
                 currentTile = bunny.GetTileFromPosition(bunny.transform.position);
 
                 List<Transform> surroundingTiles = bunny.mapGenerator.GetSurroundingTiles(currentTile.GetComponent<Tile>().x, currentTile.GetComponent<Tile>().y, true);
@@ -32,13 +33,30 @@ public class Walking : BunnyBehaviour
 
                 if (bunny.currentPath.Count == 1)
                 {
+                    Debug.Log("Reached destination");
                     bunny.currentPath = null;
+                    bunny.reachedPath = true;
                 }
             }
 
+            // Update bunny LookingFor variable based on stats
+            if (bunny.hunger >= bunny.thirst && bunny.hunger > 60)
+            {
+                bunny.lookingFor = Bunny.LookingFor.Food;
+                Debug.Log("Looking for Food");
+            } else if (bunny.thirst >= bunny.hunger && bunny.thirst > 60)
+            {
+                Debug.Log("Looking for Water");
+                bunny.lookingFor = Bunny.LookingFor.Water;
+            } else if (bunny.reproductiveUrge > bunny.hunger && bunny.reproductiveUrge > bunny.thirst && bunny.reproductiveUrge > 60)
+            {
+                Debug.Log("Looking for Mate");
+                bunny.lookingFor = Bunny.LookingFor.Mate;
+            }
+
+            bunny.transform.LookAt(targetTile);
             hasTarget = true;
             timer = 0;
-            bunny.transform.LookAt(targetTile);
         }
 
         // If not at target, move to target and animate
@@ -49,19 +67,20 @@ public class Walking : BunnyBehaviour
             {
                 bunny.animation.Play();
             }
-        } else
+        }
+
+        // Update bunny behaviour if bunny reached path
+        // FIX: IT REACHES PATH WITHOUT HAVING A PATH
+        if (bunny.reachedPath)
         {
-            if (bunny.currentPath == null && bunny.foundFood)
+            if (bunny.lookingFor == Bunny.LookingFor.Food)
             {
                 bunny.behaviour = new Eating();
-            }
-
-            if (bunny.currentPath == null && bunny.foundWater)
+            } else if (bunny.lookingFor == Bunny.LookingFor.Water)
             {
                 bunny.behaviour = new Drinking();
-            }
-
-            if (bunny.currentPath == null && bunny.foundMate) {
+            } else if (bunny.lookingFor == Bunny.LookingFor.Mate)
+            {
                 bunny.mate.behaviour = new Mating();
                 bunny.behaviour = new Mating();
             }

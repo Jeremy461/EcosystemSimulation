@@ -4,6 +4,12 @@ using UnityEngine;
 
 public class Waiting : BunnyBehaviour {
     public override void Move(Bunny bunny) {
-        bunny.transform.LookAt(bunny.mate.transform);
+        if (bunny.mate != null)
+        {
+            bunny.transform.LookAt(bunny.mate.transform);
+        } else
+        {
+            bunny.behaviour = new Walking();
+        }
     }
 }

@@ -1,13 +1,21 @@
-﻿public class Mating : BunnyBehaviour {
+﻿using UnityEngine;
+
+public class Mating : BunnyBehaviour {
+
     public override void Move(Bunny bunny) {
-        float timer = 0;
         if (!bunny.animation.isPlaying) {
             bunny.animation.Play();
         }
-        timer ++;
-        if (timer == 180) {
-            bunny.mate.mate = null;
-            bunny.mate = null;
+        
+        if (bunny.reproductiveUrge > 0)
+        {
+            bunny.reproductiveUrge -= Time.deltaTime * 20;
+        } else if (bunny.mate.reproductiveUrge <= 0)
+        {
+            bunny.mate.lookingFor = Bunny.LookingFor.Nothing;
+            bunny.lookingFor = Bunny.LookingFor.Nothing;
+            bunny.mate.foundMate = false;
+            bunny.foundMate = false;
             bunny.mate.behaviour = new Walking();
             bunny.behaviour = new Walking();
         }

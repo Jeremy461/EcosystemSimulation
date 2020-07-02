@@ -11,6 +11,7 @@ public class Drinking : BunnyBehaviour
             bunny.thirst -= Time.deltaTime * 20;
         } else
         {
+            bunny.lookingFor = Bunny.LookingFor.Nothing;
             bunny.foundWater = false;
             bunny.behaviour = new Walking();
         }

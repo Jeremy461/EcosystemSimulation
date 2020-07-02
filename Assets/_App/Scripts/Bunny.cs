@@ -19,21 +19,19 @@ public class Bunny : MonoBehaviour
     //States
     public BunnyBehaviour behaviour;
 
-    public bool lookingForMate = false;
     public bool foundMate = false;
     public Bunny mate = null;
 
-    public bool lookingForFood = false;
     public bool foundFood = false;
     public bool isEating = false;
     public Transform targetPlant;
 
-    public bool lookingForWater = true;
     public bool foundWater = false;
     public bool isDrinking = false;
 
     //Other
     public List<Node> currentPath = null;
+    public bool reachedPath = false;
     private bool isWalking = true;
     private Transform currentTile;
     public Animation animation;
@@ -44,6 +42,13 @@ public class Bunny : MonoBehaviour
     public RectTransform hungerBar;
     public RectTransform thirstBar;
     public RectTransform urgeBar;
+
+    public LookingFor lookingFor;
+
+    public enum LookingFor
+    {
+        Nothing, Food, Water, Mate
+    }
 
     void Start()
     {
@@ -57,21 +62,14 @@ public class Bunny : MonoBehaviour
     private void Update() {
         behaviour.Move(this);      
 
-        if (hunger > 60 && !foundFood && !foundMate) {
-            lookingForFood = true;
-        }
-
-        if (thirst > 60 && !foundWater && !foundMate) {
-            lookingForWater = true;
-        }
-
-        if (reproductiveUrge > 60 && !foundWater && !foundFood) {
-            lookingForMate = true;
-        }
-
         if (thirst >= 100 || hunger >= 100)
         {
             Destroy(gameObject);
+        }
+
+        if (reproductiveUrge > 100)
+        {
+            reproductiveUrge = 100;
         }
 
         switch(behaviour.GetType().ToString()) {
@@ -101,41 +99,37 @@ public class Bunny : MonoBehaviour
 
     private void OnTriggerStay(Collider other) {
         if (other.gameObject.layer == 8 &&
-            lookingForMate &&
+            lookingFor == LookingFor.Mate &&
             other.gameObject.GetComponent<Bunny>().gender != gender &&
-            other.gameObject.GetComponent<Bunny>().lookingForMate &&
-            other.gameObject.GetComponent<Bunny>().mate == null) {
+            other.gameObject.GetComponent<Bunny>().lookingFor == LookingFor.Mate &&
+            other.gameObject.GetComponent<Bunny>().mate == null &&
+            !foundMate && !other.gameObject.GetComponent<Bunny>().foundMate) {
             mate = other.gameObject.GetComponent<Bunny>();
+            foundMate = true;
+
             mate.mate = this;
-            mate.lookingForMate = false;
-            if (gender == "Male") {
+            mate.foundMate = true;
+            reachedPath = false;
+
+            if (gender == "Male")
+            {
                 GeneratePathTo(Mathf.FloorToInt(other.transform.position.x), Mathf.FloorToInt(other.transform.position.z), mapGenerator.graph);
                 mate.behaviour = new Waiting();
             }
-            mate.foundMate = true;
+        } else if (other.gameObject.layer == 9 && lookingFor == LookingFor.Food && other.gameObject.GetComponent<Plant>().eatenBy == null && !foundFood) {
+            reachedPath = false;
 
-            lookingForMate = false;
-            foundMate = true;
-        }
-
-        if (other.gameObject.layer == 9 && lookingForFood && other.gameObject.GetComponent<Plant>().eatenBy == null) {
             GeneratePathTo(Mathf.FloorToInt(other.transform.position.x), Mathf.FloorToInt(other.transform.position.z), mapGenerator.graph);
             targetPlant = other.gameObject.transform;
-            lookingForFood = false;
+            targetPlant.GetComponent<Plant>().eatenBy = this;
             foundFood = true;
-        }
-
-        if (other.gameObject.layer == 10 && lookingForWater)
+        } else if (other.gameObject.layer == 10 && lookingFor == LookingFor.Water && !foundWater)
         {
+            reachedPath = false;
+
             GeneratePathTo(Mathf.FloorToInt(other.transform.position.x), Mathf.FloorToInt(other.transform.position.z), mapGenerator.graph);
-            lookingForWater = false;
             foundWater = true;
         }
-    }
-
-    private void OnDrawGizmosSelected() {
-        UnityEditor.Handles.color = Color.green;
-        UnityEditor.Handles.DrawWireDisc(transform.position, transform.up, awarenessRadius);
     }
 
     public Transform GetTileFromPosition(Vector3 position) {
@@ -143,6 +137,7 @@ public class Bunny : MonoBehaviour
     }
 
     public void GeneratePathTo(int x, int y, Node[,] graph) {
+        reachedPath = false;
         currentPath = null;
         currentTile = GetTileFromPosition(transform.position);
 
